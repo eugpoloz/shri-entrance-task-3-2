@@ -1,43 +1,50 @@
 // @flow
-type CheapestHours = {
-  rates: {
-    [key: number]: number
-  },
-  to: number,
-  from: number
-};
+import { pickBy } from "lodash";
+import unique from "array-unique";
 
-function cheapestHours({ rates: RATES, to: TO, from: FROM }: CheapestHours) {
-  let cheapestArray = [];
-  let cheapestRate = null;
-  let resettableFrom = FROM;
+// быстрая сортировка
+const sorter = (a: number, b: number) => a - b;
 
-  function repeatableLoop(i) {
-    if (cheapestRate == null || cheapestRate > RATES[i]) {
-      cheapestRate = RATES[i];
-      cheapestArray = [i];
-    } else if (cheapestRate === RATES[i]) {
-      // if (i > 21) {
-      //   cheapestArray.unshift(i);
-      // } else {
-      cheapestArray.push(i);
-      // }
-    }
-  }
+function cheapestHours(RATES: { [key: number]: number }) {
+  const DAY_OBJECT = pickBy(RATES, (value, key) => key >= 7 && key < 21);
+  const NIGHT_OBJECT = pickBy(RATES, (value, key) => key < 7 || key >= 21);
 
-  if (FROM > TO) {
-    for (let i = resettableFrom; i < 24; i++) {
-      repeatableLoop(i);
-    }
+  const ALL_RATES_ARR = unique(Object.values(RATES)).sort(sorter);
+  const DAY_RATES_ARR = unique(Object.values(DAY_OBJECT)).sort(sorter);
+  const NIGHT_RATES_ARR = unique(Object.values(NIGHT_OBJECT)).sort(sorter);
 
-    resettableFrom = 0;
-  }
+  const ALL_HOURS_CHEAPEST = ALL_RATES_ARR.reduce(
+    (acc: Array<mixed>, rate: number, idx: number, array: Array<?mixed>) => {
+      const picked = pickBy(RATES, value => value === rate);
 
-  for (let i = resettableFrom; i < TO; i++) {
-    repeatableLoop(i);
-  }
+      return acc.concat(Object.keys(picked));
+    },
+    []
+  );
 
-  return cheapestArray;
+  const DAY_HOURS_CHEAPEST = DAY_RATES_ARR.reduce(
+    (acc: Array<mixed>, rate: number) => {
+      const picked = pickBy(DAY_OBJECT, value => value === rate);
+
+      return acc.concat(Object.keys(picked));
+    },
+    []
+  );
+
+  const NIGHT_HOURS_CHEAPEST = NIGHT_RATES_ARR.reduce(
+    (acc: Array<mixed>, rate: number) => {
+      const picked = pickBy(NIGHT_OBJECT, value => value === rate);
+
+      return acc.concat(Object.keys(picked));
+    },
+    []
+  );
+
+  return {
+    all: ALL_HOURS_CHEAPEST,
+    day: DAY_HOURS_CHEAPEST,
+    night: NIGHT_HOURS_CHEAPEST
+  };
 }
 
 export default cheapestHours;

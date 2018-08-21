@@ -7,7 +7,7 @@ export type Device = {|
   mode?: "night" | "day"
 |};
 
-type Rate = {|
+export type Rate = {|
   from: number,
   to: number,
   value: number

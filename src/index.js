@@ -1,6 +1,9 @@
 // @flow
-import { toFixedNumber, oneHourEnergy } from "./utils/consumedEnergy";
+import round from "lodash/round";
+
+import { oneHourEnergy } from "./utils/consumedEnergy";
 import cheapestHours from "./utils/cheapestHours";
+import ratesReducer from "./utils/ratesReducer";
 
 import type { Input, Device } from "./CommonTypes";
 
@@ -22,29 +25,11 @@ export default function calc({
   };
 
   // создаем табличку стоимости
-  const RATES = rates.reduce((acc, RATE) => {
-    const { from: FROM, to: TO, value: VALUE } = RATE;
-
-    let resettableFrom = FROM;
-
-    if (FROM > TO) {
-      for (let i = resettableFrom; i < 24; i++) {
-        acc[i] = VALUE;
-      }
-      resettableFrom = 0;
-    }
-
-    for (let i = resettableFrom; i < TO; i++) {
-      acc[i] = VALUE;
-    }
-
-    return acc;
-  }, {});
+  const RATES = rates.reduce(ratesReducer, {});
 
   // делаем большую табличку, в которой будет информация по каждому часу
   // и которую мы потом и заредьюсим в output
   let complexSchedule = {};
-
   let consumedEnergy = {
     value: [],
     devices: {}
@@ -104,14 +89,16 @@ export default function calc({
       repeatableLoop(i);
     }
 
-    consumedEnergy.devices[id] = toFixedNumber(energy, 4);
+    consumedEnergy.devices[id] = round(energy, 4);
     if (Array.isArray(consumedEnergy.value)) {
       consumedEnergy.value.push(energy);
     }
   }
 
   // обрабатываем наши девайсы
-  DEVICES.forEach(device => {
+  for (let i = 0, len = DEVICES.length; i < len; i++) {
+    const device = DEVICES[i];
+
     const { duration, mode } = device;
     if (duration > 24) {
       throw new Error(
@@ -121,7 +108,8 @@ export default function calc({
 
     // если девайс должен работать 24 часа, то все просто
     if (duration === 24) {
-      return devicesMapper({ ...device, to: 24, from: 0 });
+      devicesMapper({ ...device, to: 24, from: 0 });
+      continue;
     }
 
     // что мы железно должны проверять в остальных случаях?
@@ -129,47 +117,38 @@ export default function calc({
     // - за какой час мы будем платить меньше всего
     // - есть ли у нас достаточно power
 
-    // TODO: что делать, если самых дешевых часов недостаточно?
     let cheapest = null;
+    const CHEAPEST_HOURS = cheapestHours(RATES);
 
     switch (mode) {
       case "day":
-        cheapest = cheapestHours({
-          to: MODES.day.to,
-          from: MODES.day.from,
-          rates: RATES
-        })[0];
+        cheapest = CHEAPEST_HOURS.day[0];
         break;
       case "night":
-        cheapest = cheapestHours({
-          to: MODES.night.to,
-          from: MODES.night.from,
-          rates: RATES
-        })[0];
+        cheapest = CHEAPEST_HOURS.night[0];
         break;
       // mode = undefined
       default:
-        cheapest = cheapestHours({
-          to: 24,
-          from: 0,
-          rates: RATES
-        })[0];
+        cheapest = CHEAPEST_HOURS.all[0];
         break;
     }
 
-    let from = cheapest;
-    let to = cheapest + duration;
+    let from = Number(cheapest);
+    let to = Number(cheapest) + duration;
+
+    console.log(CHEAPEST_HOURS);
 
     if (to > 24) {
       to = to - 24;
     }
 
-    return devicesMapper({
+    devicesMapper({
       ...device,
       to,
       from
     });
-  });
+    continue;
+  }
 
   // определяем финальные значения
   const VALUE = Array.isArray(consumedEnergy.value)
@@ -187,7 +166,7 @@ export default function calc({
     schedule,
     consumedEnergy: {
       devices: consumedEnergy.devices,
-      value: toFixedNumber(VALUE, 4)
+      value: round(VALUE, 4)
     }
   };
 
