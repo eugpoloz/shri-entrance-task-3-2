@@ -12,20 +12,11 @@ export default function calc({
   rates,
   maxPower: MAX_POWER
 }: Input) {
-  // границы дней
-  const MODES = {
-    day: {
-      from: 7,
-      to: 21
-    },
-    night: {
-      from: 21,
-      to: 7
-    }
-  };
-
   // создаем табличку стоимости
   const RATES = rates.reduce(ratesReducer, {});
+
+  // создаем массивы самых дешевых часов для каждого мода
+  const CHEAPEST_HOURS = cheapestHours(RATES);
 
   // делаем большую табличку, в которой будет информация по каждому часу
   // и которую мы потом и заредьюсим в output
@@ -111,12 +102,9 @@ export default function calc({
     }
 
     // что мы железно должны проверять в остальных случаях?
-    // - попадает ли в нужный час
-    // - за какой час мы будем платить меньше всего
-    // - есть ли у нас достаточно power
-
+    // - попадаем ли в нужный час
+    // - за какой час будем платить меньше всего
     let cheapest = null;
-    const CHEAPEST_HOURS = cheapestHours(RATES);
 
     switch (mode) {
       case "day":
@@ -166,7 +154,6 @@ export default function calc({
     }
   };
 
-  // TODO: прибрать консоль-лог?
   console.log(OUTPUT);
   return OUTPUT;
 }
