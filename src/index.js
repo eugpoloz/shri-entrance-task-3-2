@@ -64,8 +64,6 @@ export default function calc({
     // повторяем функцию каждый луп
     function repeatableLoop(i) {
       const USED_POWER = complexSchedule[i].usedPower + power;
-      const NEXT_I = i + 1 < 24 ? i + 1 : 0;
-      const NEXT_USED_POWER = complexSchedule[NEXT_I].usedPower + power;
 
       if (USED_POWER <= MAX_POWER) {
         complexSchedule[i].devices.push(id);
@@ -135,8 +133,6 @@ export default function calc({
 
     let from = Number(cheapest);
     let to = Number(cheapest) + duration;
-
-    console.log(CHEAPEST_HOURS);
 
     if (to > 24) {
       to = to - 24;
